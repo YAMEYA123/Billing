@@ -367,7 +367,116 @@ Token Plan 专属入口（官方可确认）
                   └─ 一个专属 API Key
 ```
 
-### 6.4 配额与限流是两条不同的检查链
+### 6.4 端到端总流程图
+
+图中实线表示官方明确的产品行为，虚线表示根据外部行为推导的逻辑关联；虚线部分不代表阿里云公开了内部微服务实现。
+
+```mermaid
+flowchart LR
+    subgraph I[身份来源]
+        RAM[阿里云主账号 / RAM]
+        SSO[企业 SAML SSO]
+        DD[钉钉]
+        MANUAL[管理员手工创建]
+    end
+
+    subgraph C[Token Plan 团队控制面]
+        ORG[企业组织]
+        MEMBER[Token Plan 成员]
+        SEAT[坐席分配]
+        KEY[成员专属 sk-sp-* Key]
+    end
+
+    subgraph D[模型调用数据面]
+        TOOL[兼容 AI 编程 / 智能体工具]
+        ENTRY[Token Plan 公开入口]
+        RESOLVE[按 Key 解析套餐权益<br/>逻辑推导，内部实现未公开]
+        AUTH[校验订阅 / 成员 / 坐席状态]
+        SEATQ[坐席月度 Credits]
+        SHARED[企业共享用量包]
+        LIMIT[主账号聚合技术限流]
+        MODEL[模型服务]
+        USAGE[成员 / 模型用量归因]
+    end
+
+    RAM --> ORG
+    SSO --> MEMBER
+    DD --> MEMBER
+    MANUAL --> MEMBER
+    ORG --> MEMBER
+    MEMBER --> SEAT
+    SEAT -->|分配后生成| KEY
+    KEY -->|配置到工具| TOOL
+    TOOL -->|Authorization: Bearer Key| ENTRY
+    ENTRY -.-> RESOLVE
+    RESOLVE -.-> AUTH
+    AUTH --> SEATQ
+    SEATQ -->|额度不足| SHARED
+    SHARED --> LIMIT
+    SEATQ --> LIMIT
+    LIMIT --> MODEL
+    MODEL --> USAGE
+    USAGE -.-> MEMBER
+
+    classDef identity fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e;
+    classDef control fill:#ecfdf5,stroke:#059669,color:#064e3b;
+    classDef security fill:#fff1f2,stroke:#e11d48,color:#881337;
+    classDef quota fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95;
+    classDef unknown fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-dasharray:5 5;
+    classDef model fill:#f8fafc,stroke:#64748b,color:#0f172a;
+
+    class RAM,SSO,DD,MANUAL identity;
+    class ORG,MEMBER,SEAT control;
+    class KEY,AUTH security;
+    class SEATQ,SHARED,LIMIT,USAGE quota;
+    class RESOLVE unknown;
+    class TOOL,ENTRY,MODEL model;
+```
+
+这张图表达的关键点是：请求协议中只携带 API Key，不携带成员 ID；成员、坐席和订阅权益由 Key 在服务端隐式关联。成员是控制面与用量归因主体，不一定是网关每次实时查询的实体。
+
+### 6.5 坐席与 API Key 生命周期图
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unassigned: 购买坐席
+    Unassigned: 未分配坐席\n无成员专属 Key
+
+    Unassigned --> ActiveA: 分配给成员 A
+    ActiveA: 成员 A + 坐席 + Key A\n可调用并消耗坐席 Credits
+
+    ActiveA --> Reclaimed: 回收坐席
+    Reclaimed: 坐席回到未分配池\n成员 A 失去使用权\nKey A 精确吊销时延未公开
+
+    Reclaimed --> ActiveB: 重新分配
+    ActiveB: 获配成员 + 新 Key B\n不复用 Key A
+
+    ActiveA --> Rotated: 管理员重置 Key
+    Rotated: Key A 立即失效\n生成新 Key A2
+    Rotated --> ActiveA2: 成员继续使用原坐席
+    ActiveA2: 成员 A + 原坐席 + Key A2
+
+    ActiveA --> Removed: 移出组织
+    Removed: 坐席自动回收\nKey A 立即失效
+    Removed --> Unassigned
+
+    ActiveA --> Expired: 坐席 / 订阅到期
+    ActiveA2 --> Expired: 坐席 / 订阅到期
+    ActiveB --> Expired: 坐席 / 订阅到期
+    Expired: Key 无法调用模型\n正常续费后的 Key 行为未完全公开
+
+    ActiveA --> QuotaBlocked: 坐席额度与共享包耗尽
+    ActiveA2 --> QuotaBlocked: 坐席额度与共享包耗尽
+    ActiveB --> QuotaBlocked: 坐席额度与共享包耗尽
+    QuotaBlocked: Key 未必被撤销\n但调用因额度不足被阻断
+    QuotaBlocked --> ActiveA: 新周期或补充额度
+```
+
+> **注意**：“回收坐席”只确认成员失去使用权，旧 Key 的精确吊销时刻未公开；“重置 Key”和“移出组织”则明确会让旧 Key 立即失效。额度耗尽也不等同于 Key 被撤销。
+
+详细版可视化见：[阿里云 Token Plan 成员坐席与调用链路架构图](./阿里云TokenPlan成员坐席与调用链路架构图.html)。
+
+### 6.6 配额与限流是两条不同的检查链
 
 #### 个人版经济额度
 
@@ -396,7 +505,7 @@ Token Plan 专属入口（官方可确认）
 
 此外，`429 AllocationQuota` / `insufficient_quota` 可能表示经济额度耗尽，也可能表示技术限流。调用工具不能仅凭 HTTP 状态码判断根因，必须结合控制台剩余额度、错误正文和限流指标。
 
-### 6.5 API Key 与订阅对象生命周期矩阵
+### 6.7 API Key 与订阅对象生命周期矩阵
 
 | 事件 | 个人版 | 企业版 | 对接入架构的影响 |
 |------|--------|--------|------------------|
@@ -414,7 +523,7 @@ Token Plan 专属入口（官方可确认）
 
 > 团队版“先坐席、后共享包”是官方明确的账务优先级；单次请求跨越坐席剩余额度时是否在两个账本间原子拆扣，官方未说明。
 
-### 6.6 个人版和企业版的共享故障域
+### 6.8 个人版和企业版的共享故障域
 
 | 故障或变更 | 影响范围 |
 |------------|----------|
@@ -426,7 +535,7 @@ Token Plan 专属入口（官方可确认）
 | 企业订阅到期 | 多个坐席和成员形成企业级共同故障 |
 | 企业退订重购 | Key 明确变化；Base URL 所指对象与变化粒度未解释，应按控制台新接入信息复核 |
 
-### 6.7 对自建接入架构的直接影响
+### 6.9 对自建接入架构的直接影响
 
 #### 凭证必须以组合配置管理
 
@@ -479,7 +588,7 @@ status: active | quota_exhausted | expired | revoked | unknown
 
 只看成员 Credits 无法解释主账号限流，只看企业总量又无法定位哪个成员触发共享包消耗。
 
-### 6.8 选型结论
+### 6.10 选型结论
 
 - 单人使用、接受数据用于服务改进、希望用滑动窗口控制成本：选择个人版。
 - 需要组织成员、坐席撤权、成员用量归因以及“不用于训练”的数据承诺：选择企业版。

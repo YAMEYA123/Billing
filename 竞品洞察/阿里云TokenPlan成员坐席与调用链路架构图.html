@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阿里云 Token Plan 成员、坐席与调用链路</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      padding: 32px;
+      color: #f8fafc;
+      background: #020617;
+      font-family: "JetBrains Mono", "PingFang SC", monospace;
+    }
+    .container { max-width: 1320px; margin: 0 auto; }
+    .header { margin-bottom: 24px; }
+    .header-row { display: flex; align-items: center; gap: 12px; }
+    .pulse {
+      width: 11px; height: 11px; border-radius: 50%; background: #22d3ee;
+      box-shadow: 0 0 18px rgba(34, 211, 238, .65); animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 50% { opacity: .45; } }
+    h1 { font-size: 23px; letter-spacing: -.03em; }
+    .subtitle { margin: 8px 0 0 23px; color: #94a3b8; font-size: 13px; line-height: 1.7; }
+    .diagram {
+      padding: 20px; overflow-x: auto; border: 1px solid #1e293b;
+      border-radius: 16px; background: rgba(15, 23, 42, .52);
+    }
+    svg { display: block; min-width: 1180px; width: 100%; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+    .card { padding: 18px; border: 1px solid #1e293b; border-radius: 12px; background: rgba(15, 23, 42, .65); }
+    .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .cyan { background: #22d3ee; } .amber { background: #fbbf24; } .rose { background: #fb7185; }
+    .card h2 { font-size: 13px; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 11px; line-height: 1.75; }
+    .footer { margin-top: 18px; text-align: center; color: #475569; font-size: 10px; }
+    @media (max-width: 900px) { body { padding: 16px; } .cards { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div class="header-row"><span class="pulse"></span><h1>阿里云 Token Plan 成员、坐席与调用链路</h1></div>
+      <p class="subtitle">外部可观察架构 · 控制面与数据面分离 · 截至 2026-07-20<br>实线为官方明确行为；黄色虚线为逻辑推导或未公开边界。</p>
+    </header>
+
+    <section class="diagram" aria-label="Token Plan 架构图">
+      <svg viewBox="0 0 1240 880" role="img" aria-labelledby="title desc">
+        <title id="title">阿里云 Token Plan 成员、坐席和模型调用架构</title>
+        <desc id="desc">从身份来源进入 Token Plan 成员系统，分配坐席后生成 API Key。调用侧仅携带 Key，由服务端关联套餐权益，并执行坐席额度、共享用量包和主账号限流检查。</desc>
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width=".5"/>
+          </pattern>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0,10 3.5,0 7" fill="#64748b"/>
+          </marker>
+          <marker id="arrowAmber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0,10 3.5,0 7" fill="#fbbf24"/>
+          </marker>
+        </defs>
+        <rect width="1240" height="880" fill="url(#grid)"/>
+
+        <!-- Connections are drawn first so component cards mask them. -->
+        <g fill="none" stroke="#64748b" stroke-width="1.7" marker-end="url(#arrow)">
+          <path d="M180 115H245"/><path d="M180 190H245"/><path d="M180 265H245"/><path d="M180 340H245"/>
+          <path d="M405 225H465"/><path d="M625 225H685"/><path d="M845 225H920"/>
+          <path d="M1000 270V340"/><path d="M1000 400V465"/><path d="M1000 525V590"/>
+          <path d="M920 625H845"/><path d="M685 625H625"/>
+          <path d="M545 665V730"/><path d="M545 790V835"/>
+          <path d="M305 270V465"/><path d="M305 525V590"/>
+          <path d="M385 625H465"/>
+          <path d="M765 665V730"/><path d="M765 790V835"/>
+        </g>
+        <g fill="none" stroke="#fbbf24" stroke-width="1.7" stroke-dasharray="6 5" marker-end="url(#arrowAmber)">
+          <path d="M920 370H845"/><path d="M685 370H625"/><path d="M545 400V465"/>
+          <path d="M845 760H920"/>
+        </g>
+
+        <!-- Boundaries -->
+        <rect x="20" y="50" width="190" height="340" rx="12" fill="rgba(30,41,59,.18)" stroke="#94a3b8" stroke-dasharray="8 4"/>
+        <text x="35" y="72" fill="#94a3b8" font-size="10" font-weight="600">身份来源</text>
+        <rect x="225" y="50" width="650" height="340" rx="12" fill="rgba(6,78,59,.08)" stroke="#34d399" stroke-dasharray="8 4"/>
+        <text x="240" y="72" fill="#34d399" font-size="10" font-weight="600">TOKEN PLAN 团队控制面</text>
+        <rect x="900" y="50" width="320" height="340" rx="12" fill="rgba(136,19,55,.08)" stroke="#fb7185" stroke-dasharray="8 4"/>
+        <text x="915" y="72" fill="#fb7185" font-size="10" font-weight="600">调用凭证与客户端</text>
+        <rect x="225" y="435" width="995" height="410" rx="12" fill="rgba(120,53,15,.06)" stroke="#fbbf24" stroke-dasharray="8 4"/>
+        <text x="240" y="457" fill="#fbbf24" font-size="10" font-weight="600">模型调用数据面（外部可观察行为）</text>
+
+        <!-- Identity cards -->
+        <g>
+          <rect x="45" y="88" width="135" height="54" rx="6" fill="#0f172a"/><rect x="45" y="88" width="135" height="54" rx="6" fill="rgba(8,51,68,.4)" stroke="#22d3ee" stroke-width="1.5"/>
+          <text x="112" y="111" fill="white" font-size="10" font-weight="600" text-anchor="middle">阿里云账号 / RAM</text><text x="112" y="127" fill="#94a3b8" font-size="8" text-anchor="middle">购买与管理权限</text>
+          <rect x="45" y="163" width="135" height="54" rx="6" fill="#0f172a"/><rect x="45" y="163" width="135" height="54" rx="6" fill="rgba(8,51,68,.4)" stroke="#22d3ee" stroke-width="1.5"/>
+          <text x="112" y="186" fill="white" font-size="10" font-weight="600" text-anchor="middle">企业 SAML SSO</text><text x="112" y="202" fill="#94a3b8" font-size="8" text-anchor="middle">外部身份来源</text>
+          <rect x="45" y="238" width="135" height="54" rx="6" fill="#0f172a"/><rect x="45" y="238" width="135" height="54" rx="6" fill="rgba(8,51,68,.4)" stroke="#22d3ee" stroke-width="1.5"/>
+          <text x="112" y="261" fill="white" font-size="10" font-weight="600" text-anchor="middle">钉钉</text><text x="112" y="277" fill="#94a3b8" font-size="8" text-anchor="middle">外部身份来源</text>
+          <rect x="45" y="313" width="135" height="54" rx="6" fill="#0f172a"/><rect x="45" y="313" width="135" height="54" rx="6" fill="rgba(8,51,68,.4)" stroke="#22d3ee" stroke-width="1.5"/>
+          <text x="112" y="336" fill="white" font-size="10" font-weight="600" text-anchor="middle">管理员手工创建</text><text x="112" y="352" fill="#94a3b8" font-size="8" text-anchor="middle">无需对应 RAM 用户</text>
+        </g>
+
+        <!-- Control plane cards -->
+        <g>
+          <rect x="245" y="188" width="160" height="74" rx="6" fill="#0f172a"/><rect x="245" y="188" width="160" height="74" rx="6" fill="rgba(6,78,59,.4)" stroke="#34d399" stroke-width="1.5"/>
+          <text x="325" y="215" fill="white" font-size="11" font-weight="600" text-anchor="middle">企业组织</text><text x="325" y="233" fill="#94a3b8" font-size="8" text-anchor="middle">所有者 / 管理员</text><text x="325" y="248" fill="#94a3b8" font-size="8" text-anchor="middle">Token Plan 专属控制面</text>
+          <rect x="465" y="188" width="160" height="74" rx="6" fill="#0f172a"/><rect x="465" y="188" width="160" height="74" rx="6" fill="rgba(6,78,59,.4)" stroke="#34d399" stroke-width="1.5"/>
+          <text x="545" y="215" fill="white" font-size="11" font-weight="600" text-anchor="middle">成员</text><text x="545" y="233" fill="#94a3b8" font-size="8" text-anchor="middle">管理 / 归因 / 审计主体</text><text x="545" y="248" fill="#94a3b8" font-size="8" text-anchor="middle">不是请求协议字段</text>
+          <rect x="685" y="188" width="160" height="74" rx="6" fill="#0f172a"/><rect x="685" y="188" width="160" height="74" rx="6" fill="rgba(76,29,149,.4)" stroke="#a78bfa" stroke-width="1.5"/>
+          <text x="765" y="215" fill="white" font-size="11" font-weight="600" text-anchor="middle">坐席分配</text><text x="765" y="233" fill="#94a3b8" font-size="8" text-anchor="middle">成员获得调用权益</text><text x="765" y="248" fill="#94a3b8" font-size="8" text-anchor="middle">一名成员同时一席</text>
+        </g>
+
+        <!-- Credential/client cards -->
+        <g>
+          <rect x="920" y="188" width="160" height="82" rx="6" fill="#0f172a"/><rect x="920" y="188" width="160" height="82" rx="6" fill="rgba(136,19,55,.4)" stroke="#fb7185" stroke-width="1.5"/>
+          <text x="1000" y="213" fill="white" font-size="11" font-weight="600" text-anchor="middle">成员专属 API Key</text><text x="1000" y="232" fill="#94a3b8" font-size="8" text-anchor="middle">sk-sp-*</text><text x="1000" y="248" fill="#94a3b8" font-size="8" text-anchor="middle">分配坐席后生成</text><text x="1000" y="262" fill="#fb7185" font-size="7" text-anchor="middle">请求直接携带的凭证</text>
+          <rect x="920" y="340" width="160" height="60" rx="6" fill="#0f172a"/><rect x="920" y="340" width="160" height="60" rx="6" fill="rgba(8,51,68,.4)" stroke="#22d3ee" stroke-width="1.5"/>
+          <text x="1000" y="365" fill="white" font-size="10" font-weight="600" text-anchor="middle">兼容交互工具</text><text x="1000" y="383" fill="#94a3b8" font-size="8" text-anchor="middle">Key + Base URL</text>
+        </g>
+
+        <!-- Data plane cards -->
+        <g>
+          <rect x="920" y="465" width="160" height="60" rx="6" fill="#0f172a"/><rect x="920" y="465" width="160" height="60" rx="6" fill="rgba(120,53,15,.3)" stroke="#fbbf24" stroke-width="1.5"/>
+          <text x="1000" y="490" fill="white" font-size="10" font-weight="600" text-anchor="middle">Token Plan 公开入口</text><text x="1000" y="508" fill="#94a3b8" font-size="8" text-anchor="middle">OpenAI / Anthropic</text>
+          <rect x="920" y="590" width="160" height="70" rx="6" fill="#0f172a"/><rect x="920" y="590" width="160" height="70" rx="6" fill="rgba(120,53,15,.3)" stroke="#fbbf24" stroke-width="1.5"/>
+          <text x="1000" y="615" fill="white" font-size="10" font-weight="600" text-anchor="middle">模型服务</text><text x="1000" y="633" fill="#94a3b8" font-size="8" text-anchor="middle">白名单模型路由</text><text x="1000" y="648" fill="#94a3b8" font-size="8" text-anchor="middle">仅允许交互式工具</text>
+
+          <rect x="685" y="590" width="160" height="70" rx="6" fill="#0f172a"/><rect x="685" y="590" width="160" height="70" rx="6" fill="rgba(136,19,55,.4)" stroke="#fb7185" stroke-width="1.5"/>
+          <text x="765" y="615" fill="white" font-size="10" font-weight="600" text-anchor="middle">主账号聚合限流</text><text x="765" y="633" fill="#94a3b8" font-size="8" text-anchor="middle">RAM / Workspace / Key 合并</text><text x="765" y="648" fill="#fb7185" font-size="7" text-anchor="middle">成员独立 Key ≠ 独立吞吐</text>
+
+          <rect x="465" y="590" width="160" height="70" rx="6" fill="#0f172a"/><rect x="465" y="590" width="160" height="70" rx="6" fill="rgba(76,29,149,.4)" stroke="#a78bfa" stroke-width="1.5"/>
+          <text x="545" y="615" fill="white" font-size="10" font-weight="600" text-anchor="middle">坐席月度 Credits</text><text x="545" y="633" fill="#94a3b8" font-size="8" text-anchor="middle">第一抵扣层</text><text x="545" y="648" fill="#94a3b8" font-size="8" text-anchor="middle">按订阅月重置</text>
+
+          <rect x="245" y="590" width="140" height="70" rx="6" fill="#0f172a"/><rect x="245" y="590" width="140" height="70" rx="6" fill="rgba(251,146,60,.25)" stroke="#fb923c" stroke-width="1.5"/>
+          <text x="315" y="615" fill="white" font-size="10" font-weight="600" text-anchor="middle">共享用量包</text><text x="315" y="633" fill="#94a3b8" font-size="8" text-anchor="middle">第二抵扣层</text><text x="315" y="648" fill="#94a3b8" font-size="8" text-anchor="middle">跨坐席共享</text>
+
+          <rect x="465" y="730" width="160" height="60" rx="6" fill="#0f172a"/><rect x="465" y="730" width="160" height="60" rx="6" fill="rgba(120,53,15,.16)" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="545" y="754" fill="white" font-size="10" font-weight="600" text-anchor="middle">权益解析 / 鉴权映射</text><text x="545" y="774" fill="#fbbf24" font-size="8" text-anchor="middle">内部拓扑未公开</text>
+          <rect x="685" y="730" width="160" height="60" rx="6" fill="#0f172a"/><rect x="685" y="730" width="160" height="60" rx="6" fill="rgba(76,29,149,.4)" stroke="#a78bfa" stroke-width="1.5"/>
+          <text x="765" y="754" fill="white" font-size="10" font-weight="600" text-anchor="middle">成员 / 模型用量归因</text><text x="765" y="774" fill="#94a3b8" font-size="8" text-anchor="middle">控制台可观察</text>
+        </g>
+
+        <!-- Labels and legend outside boundaries -->
+        <text x="875" y="360" fill="#fbbf24" font-size="8" text-anchor="end">只携带 Key，不显式携带成员 ID</text>
+        <text x="650" y="752" fill="#fbbf24" font-size="8" text-anchor="middle">逻辑关联</text>
+        <g transform="translate(30 858)">
+          <line x1="0" y1="0" x2="28" y2="0" stroke="#64748b" stroke-width="1.7"/><text x="36" y="4" fill="#94a3b8" font-size="8">官方明确行为</text>
+          <line x1="150" y1="0" x2="178" y2="0" stroke="#fbbf24" stroke-width="1.7" stroke-dasharray="6 5"/><text x="186" y="4" fill="#94a3b8" font-size="8">逻辑推导 / 内部未公开</text>
+          <rect x="375" y="-7" width="14" height="10" rx="2" fill="rgba(136,19,55,.4)" stroke="#fb7185"/><text x="397" y="4" fill="#94a3b8" font-size="8">凭证 / 鉴权</text>
+          <rect x="505" y="-7" width="14" height="10" rx="2" fill="rgba(76,29,149,.4)" stroke="#a78bfa"/><text x="527" y="4" fill="#94a3b8" font-size="8">额度 / 用量</text>
+        </g>
+      </svg>
+    </section>
+
+    <section class="cards">
+      <article class="card">
+        <div class="card-head"><span class="dot cyan"></span><h2>Key 与成员</h2></div>
+        <ul><li>• 坐席分配给成员后生成专属 Key</li><li>• 请求只携带 Key，不显式携带成员 ID</li><li>• 成员承担管理、归因与审计语义</li><li>• Key 底层绑定字段未公开</li></ul>
+      </article>
+      <article class="card">
+        <div class="card-head"><span class="dot amber"></span><h2>额度与故障域</h2></div>
+        <ul><li>• 先扣成员坐席，再扣企业共享包</li><li>• 额度耗尽不等于 Key 被撤销</li><li>• 技术限流仍按主账号聚合</li><li>• 一个成员突增可能影响其他成员</li></ul>
+      </article>
+      <article class="card">
+        <div class="card-head"><span class="dot rose"></span><h2>生命周期边界</h2></div>
+        <ul><li>• 重置 Key、移出组织：旧 Key 立即失效</li><li>• 回收坐席：成员失去使用权</li><li>• 回收后的精确吊销时延未公开</li><li>• 重新分配生成新 Key，不复用旧 Key</li></ul>
+      </article>
+    </section>
+    <p class="footer">Alibaba Cloud Model Studio · Token Plan external-behavior architecture · 2026-07-20</p>
+  </main>
+</body>
+</html>
