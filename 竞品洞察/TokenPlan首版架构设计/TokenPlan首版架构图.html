@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Token Plan V1 架构图 V6</title>
+  <style>
+    :root{color-scheme:dark;--bg:#06101f;--panel:#0b1729;--line:#2a405c;--text:#eef6ff;--muted:#91a5bf;--cyan:#5ccfe3;--green:#31dda6;--yellow:#ffc329}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif}
+    main{width:min(1660px,100%);margin:auto;padding:24px}.hero{padding:22px 4px 18px;display:flex;align-items:end;justify-content:space-between;gap:20px}
+    h1{font-size:clamp(28px,4vw,46px);margin:0 0 8px;letter-spacing:-1.5px}.hero p{margin:0;color:var(--muted)}
+    .badge{border:1px solid #2a5970;color:#8beaf4;background:#0c2638;border-radius:99px;padding:7px 12px;font-size:12px;white-space:nowrap}
+    .canvas{border:1px solid var(--line);border-radius:18px;overflow:auto;background:#071222;box-shadow:0 24px 70px rgba(0,0,0,.32)}
+    .canvas img{display:block;width:100%;min-width:1100px;height:auto}
+    .notes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px}
+    .card h2{font-size:16px;margin:0 0 8px}.card p{font-size:13px;color:var(--muted);margin:5px 0}.cyan{color:var(--cyan)}.green{color:var(--green)}.yellow{color:var(--yellow)}
+    footer{text-align:center;color:#657c99;font-size:12px;padding:24px}
+    @media(max-width:800px){.hero{display:block}.badge{display:inline-block;margin-top:12px}.notes{grid-template-columns:1fr}main{padding:12px}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="hero">
+      <div><h1>Token Plan V1 架构图 · V6</h1><p>模型调用与用量统计并列展示，调用完成后进入 Credits 结算链。</p></div>
+      <span class="badge">Preview · 暂未推送</span>
+    </div>
+    <div class="canvas">
+      <img src="TokenPlan首版架构图.svg" alt="Token Plan V1 架构图 V6">
+    </div>
+    <div class="notes">
+      <article class="card"><h2 class="cyan">对外产品模型</h2><p>企业租户 → 套餐订阅 → 坐席 → API Key</p><p>控制台不提供成员管理入口。</p></article>
+      <article class="card"><h2 class="green">内部领域模型</h2><p>默认 Principal → 坐席启用记录 → Credential</p><p>保留归属、审计和未来扩展能力。</p></article>
+      <article class="card"><h2 class="yellow">调用准入</h2><p>客户端请求只携带 API Key。</p><p>总可用额度不足时拒绝鉴权，不发起上游调用。</p></article>
+    </div>
+    <footer>V6 预览文件 · 无外部 CDN 或在线脚本依赖</footer>
+  </main>
+</body>
+</html>

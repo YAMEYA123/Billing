@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1240" viewBox="0 0 1600 1240" role="img" aria-labelledby="title desc">
+  <title id="title">Token Plan V1 架构图 V6</title>
+  <desc id="desc">首版隐藏成员概念，通过企业订阅控制面、调用凭证客户端、模型调用数据面、计量额度账本域展示完整架构。</desc>
+  <defs>
+    <pattern id="smallGrid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#28405b" stroke-width=".55" opacity=".32"/></pattern>
+    <pattern id="grid" width="140" height="140" patternUnits="userSpaceOnUse"><rect width="140" height="140" fill="url(#smallGrid)"/><path d="M140 0H0V140" fill="none" stroke="#35516f" stroke-width=".9" opacity=".25"/></pattern>
+    <radialGradient id="glowA"><stop stop-color="#26e5bd" stop-opacity=".12"/><stop offset="1" stop-color="#26e5bd" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowB"><stop stop-color="#aa82ff" stop-opacity=".13"/><stop offset="1" stop-color="#aa82ff" stop-opacity="0"/></radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity=".32"/></filter>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#69819e"/></marker>
+    <marker id="arrY" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#ffc329"/></marker>
+    <marker id="arrG" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8Z" fill="#32d5a4"/></marker>
+    <style>
+      text{font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif}
+      .eyebrow{fill:#5de8f7;font-size:15px;font-weight:800;letter-spacing:3px}.headline{fill:#f1f7ff;font-size:38px;font-weight:820;letter-spacing:-1px}.lede{fill:#91a5bf;font-size:16px}
+      .zone{fill:#091426;fill-opacity:.55;stroke-width:1.4;stroke-dasharray:8 6}.zone.green{stroke:#31dda6}.zone.red{stroke:#ff637c}.zone.yellow{stroke:#ffc329}.zone.blue{stroke:#5ccfe3}
+      .zt{font-size:14px;font-weight:800;letter-spacing:.6px}.zgreen{fill:#31dda6}.zred{fill:#ff7289}.zyellow{fill:#ffc329}.zblue{fill:#5ccfe3}
+      .node{fill:#101c31;stroke-width:1.6;filter:url(#shadow)}.cyan{stroke:#39d8ed}.green{stroke:#31dda6}.purple{stroke:#aa82ff}.red{stroke:#ff637c}.yellow{stroke:#ffc329}.muted{stroke:#69819e;stroke-dasharray:7 5}
+      .nt{fill:#f1f6ff;font-size:17px;font-weight:780}.ns{fill:#90a4bd;font-size:12px}.mini{fill:#6f86a2;font-size:11px}
+      .edge{fill:none;stroke:#69819e;stroke-width:2;marker-end:url(#arr)}.edgeY{fill:none;stroke:#ffc329;stroke-width:1.8;stroke-dasharray:7 6;marker-end:url(#arrY)}.edgeG{fill:none;stroke:#32d5a4;stroke-width:2;marker-end:url(#arrG)}.edgeR{fill:none;stroke:#ff637c;stroke-width:1.7;stroke-dasharray:7 6;marker-end:url(#arr)}
+      .label{font-size:11px;fill:#93a8c1}.yl{fill:#ffc329}.rl{fill:#ff7188}
+      .card{fill:#0b1729;stroke:#2a405c;stroke-width:1}.ct{font-size:17px;font-weight:800}.cb{font-size:12px;fill:#9bafc7}.dot{font-size:15px}
+    </style>
+  </defs>
+
+  <rect width="1600" height="1240" fill="#06101f"/>
+  <rect width="1600" height="1240" fill="url(#grid)"/>
+  <circle cx="310" cy="250" r="420" fill="url(#glowA)"/><circle cx="1330" cy="380" r="470" fill="url(#glowB)"/>
+
+  <text x="54" y="58" class="eyebrow">TOKEN PLAN · V1 SYSTEM ARCHITECTURE · V6</text>
+  <text x="54" y="107" class="headline">外部省略成员，内部保留归属锚点</text>
+  <text x="54" y="137" class="lede">首版产品只呈现租户、套餐、坐席与 API Key；Principal 作为内部默认主体，不参与客户端请求。</text>
+
+  <!-- 企业控制面 -->
+  <rect x="54" y="178" width="940" height="322" rx="19" class="zone green"/>
+  <text x="76" y="205" class="zt zgreen">企业订阅与控制面</text>
+  <rect x="82" y="258" width="180" height="82" rx="12" class="node cyan"/>
+  <text x="172" y="290" text-anchor="middle" class="nt">企业租户</text><text x="172" y="316" text-anchor="middle" class="ns">管理员 / 企业账号</text>
+  <rect x="310" y="258" width="180" height="82" rx="12" class="node green"/>
+  <text x="400" y="290" text-anchor="middle" class="nt">套餐订阅</text><text x="400" y="316" text-anchor="middle" class="ns">版本 · 周期 · 总权益</text>
+  <rect x="538" y="258" width="180" height="82" rx="12" class="node purple"/>
+  <text x="628" y="290" text-anchor="middle" class="nt">坐席</text><text x="628" y="316" text-anchor="middle" class="ns">档位 · 专属额度 · 有效期</text>
+  <rect x="766" y="258" width="200" height="82" rx="12" class="node purple"/>
+  <text x="866" y="290" text-anchor="middle" class="nt">坐席启用记录</text><text x="866" y="316" text-anchor="middle" class="ns">一次启用对应一次归属</text>
+  <path d="M262 299H310M490 299H538M718 299H766" class="edge"/>
+
+  <rect x="766" y="390" width="200" height="72" rx="12" class="node muted"/>
+  <text x="866" y="419" text-anchor="middle" class="nt">默认 Principal</text><text x="866" y="443" text-anchor="middle" class="ns">内部归属 · 首版隐藏</text>
+  <path d="M866 390V340" class="edgeY"/>
+
+  <!-- 凭证客户端 -->
+  <rect x="1020" y="178" width="526" height="322" rx="19" class="zone red"/>
+  <text x="1042" y="205" class="zt zred">调用凭证与客户端</text>
+  <rect x="1060" y="258" width="210" height="82" rx="12" class="node red"/>
+  <text x="1165" y="290" text-anchor="middle" class="nt">API Key</text><text x="1165" y="316" text-anchor="middle" class="ns">哈希存储 · 可轮换撤销</text>
+  <rect x="1310" y="258" width="198" height="82" rx="12" class="node cyan"/>
+  <text x="1409" y="290" text-anchor="middle" class="nt">业务应用</text><text x="1409" y="316" text-anchor="middle" class="ns">AI 工具 / 服务客户端</text>
+  <path d="M1310 299H1270" class="edge"/>
+  <path d="M966 299H1060" class="edge"/>
+  <text x="1022" y="285" class="label">启用后生成</text>
+  <text x="1056" y="394" class="label rl">请求仅携带 Key，不携带成员或 Principal ID</text>
+  <path d="M1165 340V443H1290" class="edgeR"/>
+
+  <!-- 调用与计量域 -->
+  <rect x="290" y="536" width="1256" height="450" rx="19" class="zone yellow"/>
+  <text x="312" y="564" class="zt zyellow">模型调用、计量与额度账本域</text>
+  <rect x="1060" y="596" width="220" height="76" rx="12" class="node yellow"/>
+  <text x="1170" y="626" text-anchor="middle" class="nt">Token Plan 公共入口</text><text x="1170" y="650" text-anchor="middle" class="ns">OpenAI / Anthropic 兼容</text>
+  <rect x="790" y="596" width="220" height="76" rx="12" class="node red"/>
+  <text x="900" y="626" text-anchor="middle" class="nt">鉴权与额度准入</text><text x="900" y="650" text-anchor="middle" class="ns">Key · 限流 · 套餐 · 额度快照</text>
+  <rect x="510" y="596" width="230" height="76" rx="12" class="node yellow"/>
+  <text x="625" y="626" text-anchor="middle" class="nt">模型调用</text><text x="625" y="650" text-anchor="middle" class="ns">路由 · 降级 · 上游请求</text>
+  <rect x="310" y="596" width="160" height="76" rx="12" class="node green"/>
+  <text x="390" y="626" text-anchor="middle" class="nt">用量统计</text><text x="390" y="650" text-anchor="middle" class="ns">Token Usage</text>
+  <path d="M1290 443V634H1280" class="edge"/><path d="M1060 634H1010M790 634H740" class="edge"/>
+  <path d="M510 634H470" class="edgeG"/>
+
+  <rect x="590" y="726" width="190" height="74" rx="12" class="node purple"/>
+  <text x="685" y="756" text-anchor="middle" class="nt">Credits 计算</text><text x="685" y="780" text-anchor="middle" class="ns">模型与输入输出系数</text>
+  <rect x="832" y="726" width="190" height="74" rx="12" class="node green"/>
+  <text x="927" y="756" text-anchor="middle" class="nt">实际结算抵扣</text><text x="927" y="780" text-anchor="middle" class="ns">调用完成后按 Usage 结算</text>
+  <rect x="1074" y="726" width="190" height="74" rx="12" class="node green"/>
+  <text x="1169" y="756" text-anchor="middle" class="nt">额度账本</text><text x="1169" y="780" text-anchor="middle" class="ns">预留 · 结算 · 释放 · 冲正</text>
+  <rect x="1316" y="726" width="190" height="74" rx="12" class="node cyan"/>
+  <text x="1411" y="756" text-anchor="middle" class="nt">用量分析</text><text x="1411" y="780" text-anchor="middle" class="ns">坐席 / Key / 模型</text>
+  <path d="M390 672V700H685V726" class="edgeG"/><path d="M780 763H832M1022 763H1074M1264 763H1316" class="edgeG"/>
+
+  <rect x="590" y="860" width="190" height="68" rx="11" class="node purple"/>
+  <text x="685" y="887" text-anchor="middle" class="nt">坐席专属额度</text><text x="685" y="910" text-anchor="middle" class="ns">第一抵扣顺序</text>
+  <rect x="832" y="860" width="190" height="68" rx="11" class="node purple"/>
+  <text x="927" y="887" text-anchor="middle" class="nt">企业共享额度</text><text x="927" y="910" text-anchor="middle" class="ns">专属不足时补充</text>
+  <rect x="1074" y="860" width="190" height="68" rx="11" class="node muted"/>
+  <text x="1169" y="887" text-anchor="middle" class="nt">拒绝调用准入</text><text x="1169" y="910" text-anchor="middle" class="ns">不发起上游模型调用</text>
+  <path d="M927 800V830H685V860" class="edgeY"/><path d="M780 894H832M1022 894H1074" class="edgeY"/>
+  <text x="796" y="882" class="label yl">不足</text><text x="1038" y="882" class="label yl">不足</text>
+  <text x="1086" y="836" class="label yl">额度不足</text>
+
+  <!-- 线型图例 -->
+  <path d="M72 1020H132" class="edge"/><text x="145" y="1025" class="label">同步操作 / 调用链路</text>
+  <path d="M310 1020H370" class="edgeG"/><text x="383" y="1025" class="label">计量与账本结算</text>
+  <path d="M548 1020H608" class="edgeY"/><text x="621" y="1025" class="label">内部归属 / 额度关联</text>
+  <path d="M820 1020H880" class="edgeR"/><text x="893" y="1025" class="label">失效与撤销传播</text>
+
+  <!-- 洞察卡 -->
+  <rect x="54" y="1062" width="474" height="142" rx="16" class="card"/>
+  <circle cx="80" cy="1092" r="5" fill="#5ccfe3"/><text x="96" y="1098" class="ct" fill="#e9f5ff">坐席与 API Key</text>
+  <text x="80" y="1128" class="cb">• 坐席启用后生成 Key，Key 属于一次启用记录</text>
+  <text x="80" y="1152" class="cb">• 重置 Key 不改变坐席、额度与历史用量</text>
+  <text x="80" y="1176" class="cb">• 回收坐席会撤销当前启用记录下全部 Key</text>
+
+  <rect x="563" y="1062" width="474" height="142" rx="16" class="card"/>
+  <circle cx="589" cy="1092" r="5" fill="#ffc329"/><text x="605" y="1098" class="ct" fill="#e9f5ff">额度与故障域</text>
+  <text x="589" y="1128" class="cb">• 专属额度优先，共享额度作为补充池</text>
+  <text x="589" y="1152" class="cb">• RPM / TPM 与余额校验是不同限制</text>
+  <text x="589" y="1176" class="cb">• 总可用额度不足时鉴权拒绝，不调用上游模型</text>
+
+  <rect x="1072" y="1062" width="474" height="142" rx="16" class="card"/>
+  <circle cx="1098" cy="1092" r="5" fill="#ff637c"/><text x="1114" y="1098" class="ct" fill="#e9f5ff">生命周期边界</text>
+  <text x="1098" y="1128" class="cb">• 套餐、坐席启用记录与 Key 生命周期相互独立</text>
+  <text x="1098" y="1152" class="cb">• 套餐到期向下冻结权益，历史账本保持不变</text>
+  <text x="1098" y="1176" class="cb">• 重新启用坐席生成新的启用记录和新 Key</text>
+</svg>
