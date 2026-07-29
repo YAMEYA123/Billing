@@ -51,13 +51,22 @@ python3 性能优化/tools/analyze_kafka_export.py export-with-header.txt \
   --header \
   --timestamp timestamp \
   --timestamp-unit ms \
-  --key-fields domain_id \
+  --key-fields domain_id,resident_model_id,api-key \
   --event-id request_id \
   --factor-fields factor1,factor2,factor3 \
   --json-output analysis.json
 ```
 
-这里按你的说明把 `domain_id` 作为计费主题，把 `factor1/factor2/factor3` 作为不同用量因子。若实际聚合唯一键还包含 `project_id`、`api-key`、模型字段等，把它们追加到 `--key-fields`；如果还有更多因子，继续追加到 `--factor-fields`。
+正式聚合唯一键已经确认是：
+
+```text
+window_start（timestamp按固定5分钟计算）
++ domain_id
++ resident_model_id
++ api-key
+```
+
+因此正式命令应使用 `--key-fields domain_id,resident_model_id,api-key`，脚本会另外按五分钟窗口统计唯一键数量。`factor1/factor2/factor3` 仍作为不同用量因子单独统计，不放入聚合 key。
 
 ### Gzip 文件
 

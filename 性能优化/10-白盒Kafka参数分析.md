@@ -2,6 +2,19 @@
 
 ## 1. 输入配置
 
+## 1.1 已确认的聚合口径
+
+正式聚合唯一键为：
+
+```text
+window_start(timestamp按固定5分钟计算)
++ domain_id
++ resident_model_id
++ api-key
+```
+
+`factor1/factor2/factor3...` 是不同计费因子，只参与各自的数量累计和分布统计，不参与唯一键拼接。
+
 | 配置 | 当前值 | 判断 |
 |---|---:|---|
 | Kafka 客户端 | confluent-kafka-go v2 / librdkafka | 参数名以 librdkafka 为准 |
