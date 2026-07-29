@@ -62,6 +62,19 @@ timestamp计算出的5分钟window_start + domain_id + resident_model_id + api-k
 
 ### 管道输入
 
+对于当前已确认的无 Header 格式，推荐直接使用预设：
+
+```bash
+python3 性能优化/tools/analyze_kafka_export.py export.txt \
+  --preset loomi-pipe \
+  --json-output analysis.json
+```
+
+该预设等价于 `timestamp=0`、`request_id=2`、聚合字段 `3,9,5`、五分钟窗口，
+并把第 10 列到行尾自动识别为 `factor1`、`factor2`……。只有在确认第 10 列之后
+全部都是计费因子时才能使用；如果尾部还有其他业务字段，请改用显式的
+`--factor-fields 10,11,12`。
+
 ```bash
 python3 性能优化/tools/analyze_kafka_export.py export.txt \
   --timestamp 0 \

@@ -136,6 +136,9 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
     input_tokens: list[float] = []
     output_tokens: list[float] = []
     factor_names = list(getattr(args, "factor_names", args.factor_fields))
+    auto_factors = factor_names == ["auto"]
+    if auto_factors:
+        factor_names = []
     factor_values: dict[str, list[float]] = {name: [] for name in factor_names}
     event_ids: Counter[str] = Counter()
     keys: set[str] = set()
@@ -183,7 +186,12 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
         args.output_tokens = resolve_header_spec(args.output_tokens)
         args.event_id = resolve_header_spec(args.event_id)
         args.key_fields = [resolve_header_spec(spec) or spec for spec in args.key_fields]
-        args.factor_fields = [resolve_header_spec(spec) or spec for spec in args.factor_fields]
+        if not auto_factors:
+            args.factor_fields = [resolve_header_spec(spec) or spec for spec in args.factor_fields]
+        else:
+            args.factor_fields = [str(index) for index in range(10, len(header_record))]
+            factor_names = [str(header_record[index]).strip() or f"factor{index - 9}" for index in range(10, len(header_record))]
+            factor_values = {name: [] for name in factor_names}
 
     factor_values = {name: [] for name in factor_names}
 
@@ -194,6 +202,13 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
         if record is None:
             invalid += 1
             continue
+
+        if auto_factors and not factor_names:
+            if not isinstance(record, list):
+                raise ValueError("--factor-fields auto 仅支持 pipe 格式；JSONL 请显式指定因子路径")
+            args.factor_fields = [str(index) for index in range(10, len(record))]
+            factor_names = [f"factor{index - 9}" for index in range(10, len(record))]
+            factor_values = {name: [] for name in factor_names}
 
         timestamp = parse_timestamp(value(record, args.timestamp), args.timestamp_unit)
         if timestamp is not None:
@@ -317,17 +332,18 @@ def print_summary(report: dict[str, Any]) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", help="消息导出文件、.gz文件，或-表示stdin")
+    parser.add_argument("--preset", choices=("loomi-pipe",), help="使用已确认的 Loomi 无 Header 管道格式默认映射")
     parser.add_argument("--format", choices=("pipe", "jsonl"), default="pipe")
     parser.add_argument("--delimiter", default="|", help="pipe格式分隔符，默认|")
     parser.add_argument("--header", action="store_true", help="pipe格式第一行是字段名")
-    parser.add_argument("--timestamp", required=True, help="时间戳字段索引或JSON路径")
-    parser.add_argument("--timestamp-unit", choices=("s", "ms", "us"), required=True)
-    parser.add_argument("--key-fields", required=True, help="唯一key字段索引/路径，逗号分隔")
+    parser.add_argument("--timestamp", help="时间戳字段索引或JSON路径")
+    parser.add_argument("--timestamp-unit", choices=("s", "ms", "us"))
+    parser.add_argument("--key-fields", help="唯一key字段索引/路径，逗号分隔")
     parser.add_argument("--key-separator", default="|")
     parser.add_argument("--event-id", default=None, help="事件ID字段索引/JSON路径；不传则不统计事件ID重复")
     parser.add_argument("--input-tokens", help="兼容模式：输入Token字段索引/JSON路径")
     parser.add_argument("--output-tokens", help="兼容模式：输出Token字段索引/JSON路径")
-    parser.add_argument("--factor-fields", help="计费因子字段索引/JSON路径，逗号分隔")
+    parser.add_argument("--factor-fields", help="计费因子字段索引/JSON路径，逗号分隔；pipe 格式可用 auto 表示第10列到行尾")
     parser.add_argument("--window-seconds", type=int, default=300)
     parser.add_argument("--batch-size", type=int, default=10000)
     parser.add_argument("--max-partition-fetch-bytes", type=int, default=1024 * 1024)
@@ -339,6 +355,16 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+    if args.preset == "loomi-pipe":
+        if args.format != "pipe" or args.header:
+            parser.error("--preset loomi-pipe 仅适用于无 Header 的 pipe 格式")
+        args.timestamp = args.timestamp or "0"
+        args.timestamp_unit = args.timestamp_unit or "ms"
+        args.key_fields = args.key_fields or "3,9,5"
+        args.event_id = args.event_id or "2"
+        args.factor_fields = args.factor_fields or "auto"
+    if not args.timestamp or not args.timestamp_unit or not args.key_fields:
+        parser.error("请提供 --timestamp、--timestamp-unit、--key-fields，或使用 --preset loomi-pipe")
     args.key_fields = parse_spec(args.key_fields)
     args.factor_fields = parse_spec(args.factor_fields)
     if not args.factor_fields:
