@@ -138,8 +138,9 @@ python3 性能优化/tools/analyze_kafka_export.py export.jsonl \
 - 总消息数、无效记录数和文件字节数；
 - 消息字节数 P50/P95/P99/最大值；
 - 事件时间范围和观测 QPS；
+- 按分钟消息数/QPS序列，以及分钟 QPS 的 P50、P95、峰值；
 - 各计费因子的总量和分布（兼容 input/output Token 模式）；
-- 全文件唯一 key 和固定五分钟窗口唯一 key；
+- 全文件唯一 key、固定五分钟窗口消息数/QPS和唯一 key；
 - 可选的重复 event ID 数量；
 - 按 10,000 条模拟应用批次的消息数、字节数、唯一 key 分布；
 - 按 `max.partition.fetch.bytes` 估算每次 Fetch 可容纳的消息数；

@@ -143,6 +143,8 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
     event_ids: Counter[str] = Counter()
     keys: set[str] = set()
     window_keys: defaultdict[int, set[str]] = defaultdict(set)
+    window_counts: Counter[int] = Counter()
+    minute_counts: Counter[int] = Counter()
     batches: list[dict[str, Any]] = []
     current_batch: list[tuple[str, int, dict[str, float]]] = []
     invalid = 0
@@ -220,7 +222,10 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
             key = "<missing-key>"
         keys.add(key)
         if timestamp is not None:
-            window_keys[window_start(timestamp, args.window_seconds)].add(key)
+            window = window_start(timestamp, args.window_seconds)
+            window_keys[window].add(key)
+            window_counts[window] += 1
+            minute_counts[int(timestamp // 60)] += 1
 
         event_id_value = value(record, args.event_id)
         if event_id_value not in (None, ""):
@@ -252,10 +257,23 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
         {
             "window_start": iso(start),
             "window_end": iso(start + args.window_seconds),
+            "messages": window_counts[start],
+            "qps": window_counts[start] / args.window_seconds,
             "unique_keys": len(window_key_set),
         }
         for start, window_key_set in sorted(window_keys.items())
     ]
+    minute_series = [
+        {
+            "minute_start": iso(start * 60),
+            "minute_end": iso((start + 1) * 60),
+            "messages": count,
+            "qps": count / 60,
+        }
+        for start, count in sorted(minute_counts.items())
+    ]
+    minute_qps = [item["qps"] for item in minute_series]
+    window_qps = [item["qps"] for item in windows]
     observed_qps = (total / duration) if duration > 0 else None
     report = {
         "input": args.input,
@@ -270,6 +288,9 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
             "last": iso(max(timestamp_values)) if timestamp_values else None,
             "duration_seconds": duration,
             "observed_qps": observed_qps,
+            "minute_qps": stats(minute_qps),
+            "peak_minute_qps": max(minute_qps) if minute_qps else None,
+            "minute_series": minute_series,
         },
         "tokens": {
             "input": {"sum": sum(input_tokens), **stats(input_tokens)},
@@ -282,6 +303,7 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
         "keys": {
             "unique_over_file": len(keys),
             "unique_per_fixed_window": windows,
+            "fixed_window_qps": stats(window_qps),
         },
         "duplicates": {
             "event_id_field": args.event_id,
@@ -320,6 +342,7 @@ def print_summary(report: dict[str, Any]) -> None:
     batches = report["application_batches"]
     print(f"messages={report['total_messages']:,} invalid={report['invalid_records']:,}")
     print(f"payload_bytes={report['total_payload_bytes']:,} observed_qps={event_time['observed_qps']}")
+    print(f"minute_qps p50/p95/peak={event_time['minute_qps']['p50']}/{event_time['minute_qps']['p95']}/{event_time['peak_minute_qps']}")
     print(f"message_bytes p50/p95/p99/max={sizes['p50']}/{sizes['p95']}/{sizes['p99']}/{sizes['max']}")
     print(f"unique_keys={report['keys']['unique_over_file']:,} duplicate_event_records={report['duplicates']['duplicate_records']:,}")
     print(f"batches={batches['count']:,} batch_unique_keys_p50/p95={batches['unique_keys']['p50']}/{batches['unique_keys']['p95']}")
