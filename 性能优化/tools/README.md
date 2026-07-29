@@ -28,17 +28,47 @@ factor1 / factor2 / factor3  不同计费因子（你已确认），可一次传
 
 ## 运行示例
 
+## 已确认的无 Header 字段映射
+
+根据当前字段顺序（从 0 开始）：
+
+```text
+0  timestamp（毫秒）
+1  x-span-id
+2  request_id（事件唯一 ID）
+3  domain_id（计费主题）
+4  project_id
+5  api-key
+6  region
+7  service_id
+8  custom_resident_model_id
+9  resident_model_id
+10及以后  factor1、factor2、factor3……（需要按文件实际列数展开）
+```
+
+正式聚合 key 使用：
+
+```text
+timestamp计算出的5分钟window_start + domain_id + resident_model_id + api-key
+```
+
+因为导出没有 Header，脚本无法判断第 10 列以后是否全部都是 factor。上传文件后先统计实际列数，再显式传入，例如：
+
+```bash
+--factor-fields 10,11,12,13
+```
+
+如果第 10 列以后还混有非计费字段，需要从参数中排除，不能把所有尾部字段都算成因子。
+
 ### 管道输入
 
 ```bash
 python3 性能优化/tools/analyze_kafka_export.py export.txt \
-  --header \
   --timestamp 0 \
   --timestamp-unit ms \
-  --key-fields 1,5,6,7,8 \
+  --key-fields 3,9,5 \
   --event-id 2 \
-  --input-tokens 10 \
-  --output-tokens 11 \
+  --factor-fields 10,11,12 \
   --batch-size 10000 \
   --max-partition-fetch-bytes 1048576 \
   --json-output analysis.json
