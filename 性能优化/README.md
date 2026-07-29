@@ -98,6 +98,7 @@ flowchart TD
 - [08-压测监控与验收清单.md](./08-压测监控与验收清单.md)
 - [09-具体实施参数与预期效果.md](./09-具体实施参数与预期效果.md)
 - [10-白盒Kafka参数分析.md](./10-白盒Kafka参数分析.md)
+- [tools/README.md](./tools/README.md)
 
 ## 8. 执行前仍需确认
 
