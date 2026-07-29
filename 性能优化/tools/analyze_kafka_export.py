@@ -135,11 +135,13 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
     message_sizes: list[float] = []
     input_tokens: list[float] = []
     output_tokens: list[float] = []
+    factor_names = list(getattr(args, "factor_names", args.factor_fields))
+    factor_values: dict[str, list[float]] = {name: [] for name in factor_names}
     event_ids: Counter[str] = Counter()
     keys: set[str] = set()
     window_keys: defaultdict[int, set[str]] = defaultdict(set)
     batches: list[dict[str, Any]] = []
-    current_batch: list[tuple[str, int, float | None]] = []
+    current_batch: list[tuple[str, int, dict[str, float]]] = []
     invalid = 0
     total = 0
     total_bytes = 0
@@ -153,12 +155,39 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
                 "messages": len(current_batch),
                 "bytes": sum(item[1] for item in current_batch),
                 "unique_keys": len({item[0] for item in current_batch}),
-                "input_tokens": sum(item[2] or 0 for item in current_batch),
+                "factor_sums": {
+                    name: sum(item[2].get(name, 0) for item in current_batch)
+                    for name in factor_names
+                },
             }
         )
         current_batch.clear()
 
-    for record, raw in read_records(args):
+    records = iter(read_records(args))
+    if args.format == "pipe" and args.header:
+        try:
+            header_record, _ = next(records)
+        except StopIteration:
+            header_record = None
+        if not isinstance(header_record, list):
+            raise ValueError("--header requires the first non-empty pipe line to contain field names")
+        header_index = {str(name).strip(): str(index) for index, name in enumerate(header_record)}
+
+        def resolve_header_spec(spec: str | None) -> str | None:
+            if spec is None:
+                return None
+            return header_index.get(spec, spec)
+
+        args.timestamp = resolve_header_spec(args.timestamp)
+        args.input_tokens = resolve_header_spec(args.input_tokens)
+        args.output_tokens = resolve_header_spec(args.output_tokens)
+        args.event_id = resolve_header_spec(args.event_id)
+        args.key_fields = [resolve_header_spec(spec) or spec for spec in args.key_fields]
+        args.factor_fields = [resolve_header_spec(spec) or spec for spec in args.factor_fields]
+
+    factor_values = {name: [] for name in factor_names}
+
+    for record, raw in records:
         total += 1
         total_bytes += len(raw)
         message_sizes.append(len(raw))
@@ -182,14 +211,22 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
         if event_id_value not in (None, ""):
             event_ids[str(event_id_value)] += 1
 
-        input_value = number(value(record, args.input_tokens))
-        output_value = number(value(record, args.output_tokens))
+        factor_row: dict[str, float] = {}
+        for factor_name, factor_spec in zip(factor_names, args.factor_fields):
+            factor_value = number(value(record, factor_spec))
+            if factor_value is not None:
+                numeric_value = float(factor_value)
+                factor_row[factor_name] = numeric_value
+                factor_values[factor_name].append(numeric_value)
+
+        input_value = number(value(record, args.input_tokens)) if args.input_tokens else None
+        output_value = number(value(record, args.output_tokens)) if args.output_tokens else None
         if input_value is not None:
             input_tokens.append(float(input_value))
         if output_value is not None:
             output_tokens.append(float(output_value))
 
-        current_batch.append((key, len(raw), float(input_value) if input_value is not None else None))
+        current_batch.append((key, len(raw), factor_row))
         if len(current_batch) >= args.batch_size:
             flush_batch()
     flush_batch()
@@ -222,6 +259,10 @@ def analyze(args: argparse.Namespace) -> dict[str, Any]:
         "tokens": {
             "input": {"sum": sum(input_tokens), **stats(input_tokens)},
             "output": {"sum": sum(output_tokens), **stats(output_tokens)},
+        },
+        "factors": {
+            name: {"sum": sum(values), **stats(values)}
+            for name, values in factor_values.items()
         },
         "keys": {
             "unique_over_file": len(keys),
@@ -267,6 +308,7 @@ def print_summary(report: dict[str, Any]) -> None:
     print(f"message_bytes p50/p95/p99/max={sizes['p50']}/{sizes['p95']}/{sizes['p99']}/{sizes['max']}")
     print(f"unique_keys={report['keys']['unique_over_file']:,} duplicate_event_records={report['duplicates']['duplicate_records']:,}")
     print(f"batches={batches['count']:,} batch_unique_keys_p50/p95={batches['unique_keys']['p50']}/{batches['unique_keys']['p95']}")
+    print(f"factors={', '.join(report['factors']) or '<none>'}")
     fetch = report["fetch_estimates"]
     print(f"estimated_records_per_{fetch['configured_max_partition_fetch_bytes']}B_fetch_p50/p95={fetch['estimated_records_per_fetch_at_p50']}/{fetch['estimated_records_per_fetch_at_p95']}")
     print(f"estimated_bytes_for_{batches['batch_size']}_records={fetch['estimated_bytes_for_application_batch']:.0f}")
@@ -277,13 +319,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("input", help="消息导出文件、.gz文件，或-表示stdin")
     parser.add_argument("--format", choices=("pipe", "jsonl"), default="pipe")
     parser.add_argument("--delimiter", default="|", help="pipe格式分隔符，默认|")
+    parser.add_argument("--header", action="store_true", help="pipe格式第一行是字段名")
     parser.add_argument("--timestamp", required=True, help="时间戳字段索引或JSON路径")
     parser.add_argument("--timestamp-unit", choices=("s", "ms", "us"), required=True)
     parser.add_argument("--key-fields", required=True, help="唯一key字段索引/路径，逗号分隔")
     parser.add_argument("--key-separator", default="|")
     parser.add_argument("--event-id", default=None, help="事件ID字段索引/JSON路径；不传则不统计事件ID重复")
-    parser.add_argument("--input-tokens", required=True, help="输入Token字段索引/JSON路径")
-    parser.add_argument("--output-tokens", required=True, help="输出Token字段索引/JSON路径")
+    parser.add_argument("--input-tokens", help="兼容模式：输入Token字段索引/JSON路径")
+    parser.add_argument("--output-tokens", help="兼容模式：输出Token字段索引/JSON路径")
+    parser.add_argument("--factor-fields", help="计费因子字段索引/JSON路径，逗号分隔")
     parser.add_argument("--window-seconds", type=int, default=300)
     parser.add_argument("--batch-size", type=int, default=10000)
     parser.add_argument("--max-partition-fetch-bytes", type=int, default=1024 * 1024)
@@ -296,6 +340,13 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
     args.key_fields = parse_spec(args.key_fields)
+    args.factor_fields = parse_spec(args.factor_fields)
+    if not args.factor_fields:
+        if args.input_tokens and args.output_tokens:
+            args.factor_fields = [args.input_tokens, args.output_tokens]
+        else:
+            parser.error("必须提供 --factor-fields，或同时提供 --input-tokens 和 --output-tokens")
+    args.factor_names = list(args.factor_fields)
     report = analyze(args)
     print_summary(report)
     if args.json_output:

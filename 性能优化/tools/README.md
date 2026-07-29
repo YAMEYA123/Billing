@@ -10,16 +10,21 @@
 
 ## 你的样例格式
 
-按目前提供的样例，可以暂时按以下位置传参，但这些不是脚本默认值，正式分析前必须确认字段含义：
+你现在提供了字段名，可以在导出文件保留首行 Header 的情况下使用 `--header` 和字段名传参。脚本不会自行判断哪些字段属于业务 key 或 Token。
 
 ```text
-0  timestamp(ms)
-1～9  组成聚合key的字段（需要结合真实字段含义确认）
-10 input_tokens
-11 output_tokens
+timestamp  timestamp（单位需要确认）
+x-span-id  链路字段，通常不作为计费聚合 key
+request_id  请求/事件标识候选
+domain_id  计费主题（你已确认）
+project_id  项目维度，是否属于聚合唯一键需要确认
+api-key  API Key 标识
+region  站点/地域候选
+service_id / custom_resident_model_id / resident_model_id  模型或服务标识候选
+factor1 / factor2 / factor3  不同计费因子（你已确认），可一次传入多个
 ```
 
-由于示例中没有字段名，必须通过参数明确指定时间戳、`--key-fields`、输入 Token 和输出 Token 字段，避免把不属于业务唯一键的 ID 纳入统计。脚本现在会拒绝缺少这些映射的命令。
+即使有 Header，仍必须通过参数明确指定时间戳、`--key-fields` 和 `--factor-fields`，避免把链路 ID 或不属于业务唯一键的字段纳入统计。脚本会拒绝缺少这些映射的命令。
 
 ## 运行示例
 
@@ -27,6 +32,7 @@
 
 ```bash
 python3 性能优化/tools/analyze_kafka_export.py export.txt \
+  --header \
   --timestamp 0 \
   --timestamp-unit ms \
   --key-fields 1,5,6,7,8 \
@@ -37,6 +43,21 @@ python3 性能优化/tools/analyze_kafka_export.py export.txt \
   --max-partition-fetch-bytes 1048576 \
   --json-output analysis.json
 ```
+
+使用字段名的形式：
+
+```bash
+python3 性能优化/tools/analyze_kafka_export.py export-with-header.txt \
+  --header \
+  --timestamp timestamp \
+  --timestamp-unit ms \
+  --key-fields domain_id \
+  --event-id request_id \
+  --factor-fields factor1,factor2,factor3 \
+  --json-output analysis.json
+```
+
+这里按你的说明把 `domain_id` 作为计费主题，把 `factor1/factor2/factor3` 作为不同用量因子。若实际聚合唯一键还包含 `project_id`、`api-key`、模型字段等，把它们追加到 `--key-fields`；如果还有更多因子，继续追加到 `--factor-fields`。
 
 ### Gzip 文件
 
@@ -65,7 +86,7 @@ python3 性能优化/tools/analyze_kafka_export.py export.jsonl \
 - 总消息数、无效记录数和文件字节数；
 - 消息字节数 P50/P95/P99/最大值；
 - 事件时间范围和观测 QPS；
-- 输入/输出 Token 总量和分布；
+- 各计费因子的总量和分布（兼容 input/output Token 模式）；
 - 全文件唯一 key 和固定五分钟窗口唯一 key；
 - 可选的重复 event ID 数量；
 - 按 10,000 条模拟应用批次的消息数、字节数、唯一 key 分布；
